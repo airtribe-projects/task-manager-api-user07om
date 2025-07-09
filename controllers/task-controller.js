@@ -6,120 +6,89 @@ const { type } = require('os');
 const app = express();
 app.use(bodyParse.json());
 
-let data = [] // in-memory data
+let data = require('../task.json');
+let idCounter = data.length ? Math.max(...data.map(t => t.id || 0)) + 1 : 1;
 
-async function loadData() {
-    try {
-        const fileContent = await fs.readFile("./task.json", "utf-8");
-        data = JSON.parse(fileContent);
-        console.log("File loaded successfully");
-    } catch (err) {
-        console.error("Getting error while loading \n", err);
-        data = [];
-    }
-}
-
-async function saveData() {
-    try {
-        await fs.writeFile('./task.json', JSON.stringify(data, null, 2));
-        console.log("data saved to file");
-    } catch (err) {
-        console.error("Error saving data ", err);
-    }
-}
-
+// GET /tasks
 async function getTasks(req, res) {
-    try {
-        res.json(data);
-    } catch (err) {
-        console.error("Following is the error ", err);
+    const { completed } = req.query;
+    if (completed !== undefined) {
+        if (completed !== 'true' && completed !== 'false') {
+            return res.status(400).json({ error: "Invalid query, use either true or false" });
+        }
+        const filteredTasks = data.filter(t => t.completed === (completed === 'true'));
+        return res.json(filteredTasks);
     }
+    res.json(data);
 }
 
-async function getTaskByCompletion(req, res) {
-    try {
-        const {completed} = req.query
-        const tasks = data.tasks.filter(task => `${task.completed}` === completed);
-        res.status(200).json(tasks);
-    } catch (err) {
-        console.error("Fobllowing is the error ", err);
-    }
-}
-
+// GET /tasks/:id
 async function getSingleTask(req, res) {
-    try {
-        const taskId = req.params.id;
-        const task = data.tasks.find(task => task.id === parseInt(taskId));
-        if (task) {
-            res.json(task);
-        } else {
-            res.status(404).json({ message: "Task not found" });
-        }
-    } catch (err) {
-        res.status(404).json({ message: "Task not found" });
-    }
+    const id = Number(req.params.id);
+    const task = data.find(t => t.id === id);
+    if (!task) return res.status(404).json({ message: 'Task not found' });
+    res.json(task);
 }
 
+// POST /tasks
 async function createTask(req, res) {
-    try {
-        const newTask = req.body;
-        //increate id index.
-        newTask.id = data.tasks.length + 1
-
-        // Basic validation: check for required fields
-        if (!newTask.title && !newTask.description) {
-            res.status(400).json({ message: "Missing title and description fields" });
-        } else if (typeof(newTask.completed) !== "boolean") {
-            console.log(typeof(newTask.completed))
-            res.status(400).json({ message: "status type should be boolean!"})
-        }
-        data.tasks.push(newTask);
-        await saveData();
-        res.status(201).json(newTask);
-    } catch (err) {
-        res.status(404).json({ message: "Task not found" });
+    const { title, description, completed } = req.body;
+    const missingFields = [];
+    if (!title) missingFields.push('title');
+    if (!description) missingFields.push('description');
+    if (missingFields.length > 0) {
+        return res.status(400).json({ message: `${missingFields.join(' and ')} ${missingFields.length === 1 ? 'is' : 'are'} required` });
     }
+    if (completed !== undefined && typeof completed !== 'boolean') {
+        return res.status(400).json({ message: 'Completed status must be true, false, or not included' });
+    }
+    const task = {
+        id: idCounter++,
+        title,
+        description,
+        completed: completed === undefined ? false : completed,
+    };
+    data.push(task);
+    res.status(201).json(task);
 }
 
+// PUT /tasks/:id
 async function updateTask(req, res) {
-    try {
-        const taskId = req.params.id;
-        const updatedTask = req.body;
-        if (!updatedTask.title && !updatedTask.description) {
-            res.status(400).json({ message: "Missing title and description fields" });
-        }
+    const id = Number(req.params.id);
+    const task = data.find(t => t.id === id);
+    if (!task) return res.status(404).json({ message: 'Task not found' });
 
-        if (typeof(updatedTask.completed) !== "boolean") {
-            res.status(400).json({ message: "status type should be boolean!"})
-        }
-
-        const taskIndex = data.tasks.findIndex(task => task.id === parseInt(taskId));
-        if (taskIndex === -1) {
-            res.status(404).json({ message: "Task not found" });
-        } else {
-            data.tasks[taskIndex] = { ...data.tasks[taskIndex], ...updatedTask };
-            await saveData();
-            res.json(data.tasks[taskIndex]);
-        }
-    } catch (err) {
-        console.error("Following is the error ", err);
+    const { title, description, completed } = req.body;
+    if (title !== undefined && typeof title !== 'string') {
+        return res.status(400).json({ message: 'Invalid title' });
     }
+    if (description !== undefined && typeof description !== 'string') {
+        return res.status(400).json({ message: 'Invalid description' });
+    }
+    if (completed !== undefined && typeof completed !== 'boolean') {
+        return res.status(400).json({ message: 'Invalid completed status' });
+    }
+    if (title !== undefined) task.title = title;
+    if (description !== undefined) task.description = description;
+    if (completed !== undefined) task.completed = completed;
+
+    res.json(task);
 }
 
+// DELETE /tasks/:id
 async function deleteTask(req, res) {
-    try {
-        const taskId = req.params.id;
-        const taskIndex = data.findIndex(task => task.id === parseInt(taskId));
-        if (taskIndex === -1) {
-            res.status(404).json({ message: "Task not found" });
-        } else {
-            data.splice(taskIndex, 1);
-            await saveData();
-            res.json({ message: "Task deleted successfully" });
-        }
-    } catch (err) {
-        console.error("Following is the error ", err);
-    }
+    const id = Number(req.params.id);
+    const index = data.findIndex(t => t.id === id);
+    if (index === -1) return res.status(404).json({ message: 'Task not found' });
+
+    data.splice(index, 1);
+    res.status(200).json({ message: 'Task deleted successfully' });
 }
 
-module.exports = { loadData, getTasks, getSingleTask, createTask, updateTask, deleteTask, getTaskByCompletion }
+module.exports = {
+    getTasks,
+    getSingleTask,
+    createTask,
+    updateTask,
+    deleteTask,
+};

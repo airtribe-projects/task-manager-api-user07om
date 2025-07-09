@@ -8,7 +8,7 @@ router.get('/', getTasks); //get all the tasks
 router.get('/task/:id', getSingleTask); // retrive single task
 router.get('/filter/', getTaskByCompletion); //retrive task by status
 router.post('/create', createTask); //create new tasks
-router.post('/update/:id', updateTask); // update exsting task
-router.post('/delete/:id', deleteTask); // delete exsting task
+router.put('/update/:id', updateTask); // update exsting task
+router.delete('/delete/:id', deleteTask); // delete exsting task
 
 module.exports = router
