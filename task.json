@@ -1,5 +1,4 @@
-{
-  "tasks": [
+[
     {
       "id": 1,
       "title": "Set up environment",
@@ -89,6 +88,27 @@
       "title": "Install jsonwebtoken",
       "description": "Install jsonwebtoken",
       "completed": false
+    },
+    {
+      "title": "testing",
+      "description": "working on it",
+      "completed": false
+    },
+    {
+      "title": "testing",
+      "description": "working on it",
+      "completed": false
+    },
+    {
+      "title": "Install connect-mongo",
+      "description": "Install connect-mongo",
+      "completed": false,
+      "id": 18
+    },
+    {
+      "title": "does it work",
+      "description": "it's gonna work",
+      "completed": true,
+      "id": 19
     }
-  ]
-}
+]
